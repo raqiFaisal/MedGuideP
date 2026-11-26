@@ -1,0 +1,60 @@
+# Data and model weights never go to Git (see CLAUDE.md §13)
+data/raw/
+data/processed/
+data/reference/
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.safetensors
+*.db
+*.db-journal
+!mobile/assets/db/.gitkeep
+mobile/assets/db/version.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+mobile/android/
+mobile/ios/
+
+# Signing keys and secrets — never commit
+*.jks
+*.keystore
+*.p12
+*.pem
+.env
+.env.*
+!.env.example
+credentials.json
+kaggle.json
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Older prompt draft kept locally, superseded by CLAUDE.md (v2)
+MedGuide_Master_Build_PromptR.md
+mobile/assets/models/*.onnx
+mobile/assets/models/*.f32
+mobile/assets/models/ocr_*_alphabet.json

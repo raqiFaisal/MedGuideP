@@ -1,0 +1,14 @@
+{
+  "input": "arablat-04-r90.jpg",
+  "runtime": "1.24.3",
+  "platform": "linux-x64",
+  "boundaries": "Real TypeScript inference functions and ONNX weights with desktop CPU execution and asset I/O adapters. Diagnostic row IDs are not catalog product IDs.",
+  "ocr_lines_by_script": {
+    "arabic": 7,
+    "latin": 6
+  },
+  "ocr_lines_with_arabic_script": 7,
+  "ocr_time_ms_including_session_init": 510.634374,
+  "nearest_exploratory_row": 4,
+  "cosine_to_nearest_exploratory_row": 0.4635530228493731
+}

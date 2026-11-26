@@ -1,0 +1,62 @@
+{
+  "engine_pytest": 183,
+  "data_pipeline_pytest": 16,
+  "mobile_jest": 157,
+  "catalog": {
+    "sha256": "24aa56ce2ddf163a2ec97365f6f029b273ec81de9ea673e42267c90668cf8407",
+    "products": 38198,
+    "quick_check": "ok",
+    "known_shared_gtins_all_require_confirmation": 396
+  },
+  "ocr_exploratory": {
+    "medpack": {
+      "crops": 30,
+      "median_cpu_ms": 6461.213368500125,
+      "lines_by_model": {
+        "arabic": 746,
+        "latin": 746
+      }
+    },
+    "arabic_latin": {
+      "crops": 6,
+      "median_cpu_ms": 1727.3055274999933,
+      "lines_by_model": {
+        "arabic": 30,
+        "latin": 30
+      }
+    }
+  },
+  "notebooks_syntax": "passed",
+  "typescript": "passed",
+  "eslint": "passed",
+  "expo_android_js_export": "passed",
+  "real_android_phone_tested": false,
+  "versions": {
+    "torch": "2.15.0+cpu",
+    "paddlepaddle": "3.3.1",
+    "paddleocr": "3.7.0",
+    "paddle2onnx": "2.1.0",
+    "faiss-cpu": "1.16.0",
+    "onnxruntime": "1.32.0",
+    "zxing-cpp": "3.2.0"
+  },
+  "fresh_zip_extraction": {
+    "npm_ci_offline": "passed with cached packages",
+    "assets_setup": "passed",
+    "typescript": "passed",
+    "jest": "157 passed"
+  },
+  "native_android_apk": false,
+  "native_android_build_attempted": true,
+  "android_native_build_context": {
+    "gradle": "9.4.1",
+    "jdk": "17",
+    "compile_sdk": 37,
+    "ndk": "27.1.12297006",
+    "target_abi": "arm64-v8a",
+    "noted_environment_blockers": [
+      "repository access and Java trust-store certificate errors"
+    ],
+    "phone_connected": false
+  }
+}

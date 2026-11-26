@@ -1,0 +1,47 @@
+{
+  "dataset": "MedPackID v1",
+  "doi": "10.17632/d23kndp3sv.1",
+  "images": 1444,
+  "labels": 1444,
+  "paired": 1444,
+  "missing_images": [],
+  "missing_labels": [],
+  "box_counts": {
+    "medicine_packaging": 899,
+    "pill": 641
+  },
+  "integrity": {
+    "annotations_voc.zip": {
+      "bytes": 614822,
+      "sha256": "11cdf85cdad621c51002985e8cf45173162966332dbab10a551b3d98f73e66d4"
+    },
+    "data.yaml": {
+      "bytes": 146,
+      "sha256": "3664445d7154e284b7de99ba43654f6308bf81ce1a4e88beecb8a9ef4f834354"
+    },
+    "drug_candidates.csv": {
+      "bytes": 7466,
+      "sha256": "e18a3eac913b45217c12a710edba394e6adc9249e8240b3d53546e40a7760bd4"
+    },
+    "drug_name_dose_function.csv": {
+      "bytes": 12281,
+      "sha256": "9cea1de726dd72ae8387c5c0855c1df5d306c884a4eddd4c555ffcdfe12bc97d"
+    },
+    "images.zip": {
+      "bytes": 3256769597,
+      "sha256": "58aa171aef3463dd560783190393833e06779f174c912046428ebe00d780d513"
+    },
+    "labels.txt": {
+      "bytes": 26,
+      "sha256": "22bf1cab061e2d3ce7a0fdaac8a6d0d4c2a2ff344c9f0da6e53e6b8c279263b9"
+    },
+    "labels.zip": {
+      "bytes": 380248,
+      "sha256": "4b9ffeba0d5478eb911349f2fc712c50b1d85603de0eb18ba6cdf9c3315c1969"
+    },
+    "license.txt": {
+      "bytes": 318,
+      "sha256": "28a4b981d3812434b2f9ef9192c7fb49d44e1feca1949d14b71d865c0195bba7"
+    }
+  }
+}

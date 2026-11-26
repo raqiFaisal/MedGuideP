@@ -1,0 +1,192 @@
+{
+  "image_count": 30,
+  "embedding_dimension": 384,
+  "quantized_cosine_min": 0.953708291053772,
+  "same_input_index_at_1": 30,
+  "independent_product_metrics": null,
+  "reason": "No verified product mappings or independent queries.",
+  "onnx_size_bytes": 24727117,
+  "onnx_sha256": "d0145c701d7e9802718eca5c1e0e9906d5082d4090e605314cb49131c0744dbc",
+  "checks": [
+    {
+      "file_name": "crop-00001.jpg",
+      "fp32_max_abs_difference": 4.246830940246582e-07,
+      "quantized_embedding_cosine": 0.9752124547958374,
+      "quantized_time_ms": 38.46771200005605
+    },
+    {
+      "file_name": "crop-00002.jpg",
+      "fp32_max_abs_difference": 4.023313522338867e-07,
+      "quantized_embedding_cosine": 0.9825283288955688,
+      "quantized_time_ms": 65.59448000007251
+    },
+    {
+      "file_name": "crop-00003.jpg",
+      "fp32_max_abs_difference": 3.203749656677246e-07,
+      "quantized_embedding_cosine": 0.9788274765014648,
+      "quantized_time_ms": 50.12777299998561
+    },
+    {
+      "file_name": "crop-00004.jpg",
+      "fp32_max_abs_difference": 5.029141902923584e-07,
+      "quantized_embedding_cosine": 0.953708291053772,
+      "quantized_time_ms": 31.332488000089143
+    },
+    {
+      "file_name": "crop-00005.jpg",
+      "fp32_max_abs_difference": 3.203749656677246e-07,
+      "quantized_embedding_cosine": 0.9830875396728516,
+      "quantized_time_ms": 33.68792099990969
+    },
+    {
+      "file_name": "crop-00006.jpg",
+      "fp32_max_abs_difference": 4.1350722312927246e-07,
+      "quantized_embedding_cosine": 0.9828041791915894,
+      "quantized_time_ms": 112.15838600014649
+    },
+    {
+      "file_name": "crop-00007.jpg",
+      "fp32_max_abs_difference": 7.301568984985352e-07,
+      "quantized_embedding_cosine": 0.9734236598014832,
+      "quantized_time_ms": 57.334754999828874
+    },
+    {
+      "file_name": "crop-00008.jpg",
+      "fp32_max_abs_difference": 6.109476089477539e-07,
+      "quantized_embedding_cosine": 0.9832704067230225,
+      "quantized_time_ms": 50.4370270000436
+    },
+    {
+      "file_name": "crop-00009.jpg",
+      "fp32_max_abs_difference": 3.7066638469696045e-07,
+      "quantized_embedding_cosine": 0.9711735844612122,
+      "quantized_time_ms": 46.65455100007421
+    },
+    {
+      "file_name": "crop-00010.jpg",
+      "fp32_max_abs_difference": 4.880130290985107e-07,
+      "quantized_embedding_cosine": 0.9844930171966553,
+      "quantized_time_ms": 61.74421200012148
+    },
+    {
+      "file_name": "crop-00011.jpg",
+      "fp32_max_abs_difference": 3.2689422369003296e-07,
+      "quantized_embedding_cosine": 0.9799372553825378,
+      "quantized_time_ms": 51.07752399999299
+    },
+    {
+      "file_name": "crop-00012.jpg",
+      "fp32_max_abs_difference": 4.284083843231201e-07,
+      "quantized_embedding_cosine": 0.9740114212036133,
+      "quantized_time_ms": 53.848202999915884
+    },
+    {
+      "file_name": "crop-00013.jpg",
+      "fp32_max_abs_difference": 2.7567148208618164e-07,
+      "quantized_embedding_cosine": 0.9865268468856812,
+      "quantized_time_ms": 49.247346999891306
+    },
+    {
+      "file_name": "crop-00014.jpg",
+      "fp32_max_abs_difference": 5.811452865600586e-07,
+      "quantized_embedding_cosine": 0.9734005928039551,
+      "quantized_time_ms": 47.245205000081114
+    },
+    {
+      "file_name": "crop-00015.jpg",
+      "fp32_max_abs_difference": 2.421438694000244e-07,
+      "quantized_embedding_cosine": 0.9814781546592712,
+      "quantized_time_ms": 46.17098500011707
+    },
+    {
+      "file_name": "crop-00016.jpg",
+      "fp32_max_abs_difference": 3.8929283618927e-07,
+      "quantized_embedding_cosine": 0.984260082244873,
+      "quantized_time_ms": 59.050677000186624
+    },
+    {
+      "file_name": "crop-00017.jpg",
+      "fp32_max_abs_difference": 3.2782554626464844e-07,
+      "quantized_embedding_cosine": 0.9747768640518188,
+      "quantized_time_ms": 53.20561799999268
+    },
+    {
+      "file_name": "crop-00018.jpg",
+      "fp32_max_abs_difference": 3.073364496231079e-07,
+      "quantized_embedding_cosine": 0.9764279127120972,
+      "quantized_time_ms": 50.146733000019594
+    },
+    {
+      "file_name": "crop-00019.jpg",
+      "fp32_max_abs_difference": 4.898756742477417e-07,
+      "quantized_embedding_cosine": 0.9848237037658691,
+      "quantized_time_ms": 58.08583900011399
+    },
+    {
+      "file_name": "crop-00020.jpg",
+      "fp32_max_abs_difference": 6.034970283508301e-07,
+      "quantized_embedding_cosine": 0.9868447780609131,
+      "quantized_time_ms": 32.764842000005956
+    },
+    {
+      "file_name": "crop-00021.jpg",
+      "fp32_max_abs_difference": 3.203749656677246e-07,
+      "quantized_embedding_cosine": 0.9766881465911865,
+      "quantized_time_ms": 56.31521600002998
+    },
+    {
+      "file_name": "crop-00022.jpg",
+      "fp32_max_abs_difference": 3.855675458908081e-07,
+      "quantized_embedding_cosine": 0.9856471419334412,
+      "quantized_time_ms": 51.561980999849766
+    },
+    {
+      "file_name": "crop-00023.jpg",
+      "fp32_max_abs_difference": 3.3527612686157227e-07,
+      "quantized_embedding_cosine": 0.9905354976654053,
+      "quantized_time_ms": 31.339368000089962
+    },
+    {
+      "file_name": "crop-00024.jpg",
+      "fp32_max_abs_difference": 3.5762786865234375e-07,
+      "quantized_embedding_cosine": 0.981133222579956,
+      "quantized_time_ms": 31.213162000085504
+    },
+    {
+      "file_name": "crop-00025.jpg",
+      "fp32_max_abs_difference": 6.109476089477539e-07,
+      "quantized_embedding_cosine": 0.961345911026001,
+      "quantized_time_ms": 128.97520199999235
+    },
+    {
+      "file_name": "crop-00026.jpg",
+      "fp32_max_abs_difference": 3.501772880554199e-07,
+      "quantized_embedding_cosine": 0.9754931926727295,
+      "quantized_time_ms": 32.08146300016779
+    },
+    {
+      "file_name": "crop-00027.jpg",
+      "fp32_max_abs_difference": 3.650784492492676e-07,
+      "quantized_embedding_cosine": 0.9732425212860107,
+      "quantized_time_ms": 33.04737900020882
+    },
+    {
+      "file_name": "crop-00028.jpg",
+      "fp32_max_abs_difference": 2.8312206268310547e-07,
+      "quantized_embedding_cosine": 0.9840275049209595,
+      "quantized_time_ms": 49.69656799994482
+    },
+    {
+      "file_name": "crop-00029.jpg",
+      "fp32_max_abs_difference": 4.079192876815796e-07,
+      "quantized_embedding_cosine": 0.9733505845069885,
+      "quantized_time_ms": 31.253941999921153
+    },
+    {
+      "file_name": "crop-00030.jpg",
+      "fp32_max_abs_difference": 4.023313522338867e-07,
+      "quantized_embedding_cosine": 0.9826601147651672,
+      "quantized_time_ms": 45.06138800002191
+    }
+  ]
+}

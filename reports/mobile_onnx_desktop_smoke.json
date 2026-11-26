@@ -1,0 +1,13 @@
+{
+  "input": "crop-00001.jpg",
+  "runtime": "1.24.3",
+  "platform": "linux-x64",
+  "boundaries": "Real TypeScript inference functions and ONNX weights with desktop CPU execution and asset I/O adapters. Diagnostic row IDs are not catalog product IDs.",
+  "ocr_lines_by_script": {
+    "arabic": 2,
+    "latin": 5
+  },
+  "ocr_time_ms_including_session_init": 1391.595421,
+  "first_same_input_reference_row": 1,
+  "same_input_cosine": 0.9843687206860576
+}

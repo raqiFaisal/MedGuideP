@@ -1,0 +1,26 @@
+[project]
+name = "medguide-engine"
+version = "0.1.0"
+description = "MedGuide reference recognition engine (local, not deployed)"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-only" }
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "rapidfuzz>=3.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["medguide_engine*"]

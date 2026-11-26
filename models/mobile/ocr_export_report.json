@@ -1,0 +1,56 @@
+{
+  "ocr_detection": {
+    "model": "PP-OCRv5_mobile_det",
+    "onnx_size_bytes": 4766440,
+    "onnx_sha256": "c8d9b07063420ce5365c74e42532de48238feeeedcdb7a330b195708bc38a93f",
+    "test_input_shape": [
+      1,
+      3,
+      320,
+      480
+    ],
+    "output_shape": [
+      1,
+      1,
+      320,
+      480
+    ],
+    "max_abs_export_difference": 1.3446825164464826e-07
+  },
+  "ocr_arabic": {
+    "model": "arabic_PP-OCRv5_mobile_rec",
+    "onnx_size_bytes": 7994035,
+    "onnx_sha256": "4e2f4ae42104e1b272463966c56ddafa3c6ad98ce9d8c7ed765ce66666ea13e1",
+    "test_input_shape": [
+      1,
+      3,
+      48,
+      320
+    ],
+    "output_shape": [
+      1,
+      40,
+      749
+    ],
+    "max_abs_export_difference": 5.155801773071289e-06,
+    "alphabet_sha256": "eda3a0da0c8db43d1d00c2eb26dcbe74f94378ce84ceb007a2f42e126b70f446"
+  },
+  "ocr_latin": {
+    "model": "latin_PP-OCRv5_mobile_rec",
+    "onnx_size_bytes": 8037111,
+    "onnx_sha256": "20e6127d910ef10be0d0fe4a49e68d2474b07e83f57600cdd177b3edb561d194",
+    "test_input_shape": [
+      1,
+      3,
+      48,
+      320
+    ],
+    "output_shape": [
+      1,
+      40,
+      838
+    ],
+    "max_abs_export_difference": 1.1026859283447266e-06,
+    "alphabet_sha256": "b29050ac239ad297a6bab28af40a3dede120cfbd8c2fad65b6caa85d12a4370f"
+  }
+}

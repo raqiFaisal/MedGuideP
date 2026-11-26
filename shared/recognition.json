@@ -1,0 +1,7 @@
+{
+  "min_ocr_line": 0.65,
+  "min_name_similarity": 0.83,
+  "min_visual_similarity": 0.65,
+  "min_detector_score": 0.3,
+  "weights": {"barcode": 5, "name": 0.55, "ocr": 0.1, "strength": 0.15, "manufacturer": 0.05, "form": 0.05, "visual": 0.1}
+}

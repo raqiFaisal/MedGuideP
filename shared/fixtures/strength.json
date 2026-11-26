@@ -1,0 +1,247 @@
+{
+  "_comment": "Shared strength-parsing cases (CLAUDE.md §5). Loaded by engine/tests and mobile/__tests__. 'expected' is the normalized strength string; '' means no strength found. A standalone volume (e.g. '120 ml' pack size) is NOT a strength.",
+  "parse": [
+    {
+      "input": "500mg",
+      "expected": "500 MG"
+    },
+    {
+      "input": "500 MG",
+      "expected": "500 MG"
+    },
+    {
+      "input": "1g",
+      "expected": "1 G"
+    },
+    {
+      "input": "augmentin 1 gm 14 f.c.tabs",
+      "expected": "1 G"
+    },
+    {
+      "input": "2.5 mg",
+      "expected": "2.5 MG"
+    },
+    {
+      "input": "2,5 mg",
+      "expected": "2.5 MG"
+    },
+    {
+      "input": "2.50 mg",
+      "expected": "2.5 MG"
+    },
+    {
+      "input": "50mcg",
+      "expected": "50 MCG"
+    },
+    {
+      "input": "50µg",
+      "expected": "50 MCG"
+    },
+    {
+      "input": "50 ug",
+      "expected": "50 MCG"
+    },
+    {
+      "input": "250mg/5ml",
+      "expected": "250 MG/5 ML"
+    },
+    {
+      "input": "125 mg / 5 ml",
+      "expected": "125 MG/5 ML"
+    },
+    {
+      "input": "100mg/ml",
+      "expected": "100 MG/ML"
+    },
+    {
+      "input": "insulin 100 IU/ml",
+      "expected": "100 IU/ML"
+    },
+    {
+      "input": "2000 iu / 5 ml drops",
+      "expected": "2000 IU/5 ML"
+    },
+    {
+      "input": "10 mg/g cream",
+      "expected": "10 MG/G"
+    },
+    {
+      "input": "500mg/125mg",
+      "expected": "500 MG + 125 MG"
+    },
+    {
+      "input": "5 mg/mg (OCR noise)",
+      "expected": "5 MG"
+    },
+    {
+      "input": "chlorpheniramine 2mg + paracetamol 325mg",
+      "expected": "2 MG + 325 MG"
+    },
+    {
+      "input": "1%",
+      "expected": "1 %"
+    },
+    {
+      "input": "0.05 % cream",
+      "expected": "0.05 %"
+    },
+    {
+      "input": "1000 IU",
+      "expected": "1000 IU"
+    },
+    {
+      "input": "1000 i.u. capsules",
+      "expected": "1000 IU"
+    },
+    {
+      "input": "10,000 IU",
+      "expected": "10000 IU"
+    },
+    {
+      "input": "panadol 500mg 24 tabs",
+      "expected": "500 MG"
+    },
+    {
+      "input": "1 2 3 (one two three) syrup 120 ml",
+      "expected": ""
+    },
+    {
+      "input": "no strength here",
+      "expected": ""
+    },
+    {
+      "input": "B12",
+      "expected": ""
+    },
+    {
+      "input": "٥٠٠ ملغ",
+      "expected": "500 MG"
+    },
+    {
+      "input": "٥٠٠ مجم",
+      "expected": "500 MG"
+    },
+    {
+      "input": "500 ملجم",
+      "expected": "500 MG"
+    },
+    {
+      "input": "١ جم",
+      "expected": "1 G"
+    },
+    {
+      "input": "١ غرام",
+      "expected": "1 G"
+    },
+    {
+      "input": "250 مجم/5 مل",
+      "expected": "250 MG/5 ML"
+    },
+    {
+      "input": "50 ميكروغرام",
+      "expected": "50 MCG"
+    },
+    {
+      "input": "ابسوربابل سيلينيوم  200 مكجم 100 كبسولة",
+      "expected": "200 MCG"
+    },
+    {
+      "input": "1000 وحدة دولية",
+      "expected": "1000 IU"
+    },
+    {
+      "input": "١٪",
+      "expected": "1 %"
+    },
+    {
+      "input": "ون تو ثري شراب 120 مل",
+      "expected": ""
+    },
+    {
+      "input": "",
+      "expected": ""
+    }
+  ],
+  "equivalent": [
+    {
+      "a": "1 G",
+      "b": "1000 MG",
+      "expected": true
+    },
+    {
+      "a": "500 MG",
+      "b": "500 MG",
+      "expected": true
+    },
+    {
+      "a": "500 MG",
+      "b": "250 MG",
+      "expected": false
+    },
+    {
+      "a": "1000 MCG",
+      "b": "1 MG",
+      "expected": true
+    },
+    {
+      "a": "250 MG/5 ML",
+      "b": "50 MG/ML",
+      "expected": true
+    },
+    {
+      "a": "250 MG/5 ML",
+      "b": "125 MG/5 ML",
+      "expected": false
+    },
+    {
+      "a": "100 IU/ML",
+      "b": "500 IU/5 ML",
+      "expected": true
+    },
+    {
+      "a": "100 IU/ML",
+      "b": "100 MG/ML",
+      "expected": false
+    },
+    {
+      "a": "1 G/5 ML",
+      "b": "200 MG/ML",
+      "expected": true
+    },
+    {
+      "a": "500 MG + 125 MG",
+      "b": "125 MG + 500 MG",
+      "expected": true
+    },
+    {
+      "a": "500 MG + 125 MG",
+      "b": "500 MG",
+      "expected": false
+    },
+    {
+      "a": "1000 IU",
+      "b": "1000 IU",
+      "expected": true
+    },
+    {
+      "a": "1000 IU",
+      "b": "1000 MG",
+      "expected": false
+    },
+    {
+      "a": "1 %",
+      "b": "1 %",
+      "expected": true
+    },
+    {
+      "a": "",
+      "b": "500 MG",
+      "expected": false
+    },
+    {
+      "a": "",
+      "b": "",
+      "expected": false
+    }
+  ]
+}

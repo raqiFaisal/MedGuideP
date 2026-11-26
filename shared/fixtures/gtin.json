@@ -1,0 +1,17 @@
+{
+  "_comment": "Shared GTIN check-digit and GTIN-14 conversion cases (GS1 mod-10). Loaded by both engine/tests and mobile/__tests__. Valid examples were hand-verified with the GS1 weighting (3,1,3,1... from the right).",
+  "cases": [
+    { "input": "4006381333931", "valid": true, "gtin14": "04006381333931", "note": "EAN-13" },
+    { "input": "036000291452", "valid": true, "gtin14": "00036000291452", "note": "UPC-A (GTIN-12)" },
+    { "input": "96385074", "valid": true, "gtin14": "00000096385074", "note": "EAN-8" },
+    { "input": "04006381333931", "valid": true, "gtin14": "04006381333931", "note": "GTIN-14 with leading zero" },
+    { "input": "14006381333938", "valid": true, "gtin14": "14006381333938", "note": "GTIN-14 indicator digit 1" },
+    { "input": " 4006381333931 ", "valid": true, "gtin14": "04006381333931", "note": "surrounding whitespace is stripped" },
+    { "input": "4006381333932", "valid": false, "gtin14": null, "note": "wrong check digit" },
+    { "input": "14006381333931", "valid": false, "gtin14": null, "note": "GTIN-14 wrong check digit" },
+    { "input": "12345", "valid": false, "gtin14": null, "note": "unsupported length" },
+    { "input": "400638133393X", "valid": false, "gtin14": null, "note": "non-digit" },
+    { "input": "4006 381333931", "valid": false, "gtin14": null, "note": "inner space" },
+    { "input": "", "valid": false, "gtin14": null, "note": "empty" }
+  ]
+}
