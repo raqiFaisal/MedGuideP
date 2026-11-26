@@ -76,15 +76,16 @@ function overlaps(a: Detection, b: Detection) {
   return intersection / (area(a) + area(b) - intersection) > .45;
 }
 
-export async function detect(pixels: Pixels): Promise<Box[] | null> {
-  if (!assets.detector) return null;
+export async function detect(pixels: Pixels, pilot = false): Promise<Box[] | null> {
+  const model = pilot ? assets.pilotDetector : assets.detector;
+  if (!model) return null;
   const size = 640;
   const scale = Math.min(size / pixels.width, size / pixels.height);
   const width = Math.round(pixels.width * scale);
   const height = Math.round(pixels.height * scale);
   const dx = Math.floor((size - width) / 2);
   const dy = Math.floor((size - height) / 2);
-  const { data, dimensions } = await infer(assets.detector,
+  const { data, dimensions } = await infer(model,
     tensor(pixels, fullBox(pixels), width, height, 'yolo', size, size, dx, dy), size, size);
   if (dimensions.length !== 3 || dimensions[0] !== 1 || dimensions[1] !== 5 || !dimensions[2]) {
     throw new Error('Expected a one-class YOLO11 ONNX model without embedded NMS');
@@ -93,9 +94,9 @@ export async function detect(pixels: Pixels): Promise<Box[] | null> {
   const hits: Detection[] = [];
   for (let i = 0; i < n; i++) {
     const score = data[4 * n + i]!;
-    if (!(score >= rules.min_detector_score)) continue;
+    if (!(score >= (pilot ? .65 : rules.min_detector_score))) continue;
     const x = data[i]!, y = data[n + i]!, w = data[2 * n + i]!, h = data[3 * n + i]!;
-    if (w <= 0 || h <= 0) continue;
+    if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) continue;
     hits.push({ left: x - w / 2, top: y - h / 2, right: x + w / 2, bottom: y + h / 2, score });
   }
   const kept: Detection[] = [];

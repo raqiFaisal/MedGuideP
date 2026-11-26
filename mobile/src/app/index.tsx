@@ -6,19 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Product, searchQuery } from '../catalog/queries';
 
-const markets: readonly (readonly [string, string])[] = [['', 'الكل'], ['EG', 'مصر'], ['SA', 'السعودية']];
+const markets: Record<string, string> = { EG: 'مصر', SA: 'السعودية' };
 
 export default function Index() {
   const db = useSQLiteContext();
   const [query, setQuery] = useState('');
-  const [country, setCountry] = useState('');
   const [items, setItems] = useState<Product[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function search() {
     if (busy) return;
-    const statement = searchQuery(query, country);
+    const statement = searchQuery(query, '');
     setItems([]);
     if (!statement) {
       setMessage('اكتبي اسم الدواء أو رقم الباركود.');
@@ -50,15 +49,6 @@ export default function Index() {
         placeholder="اسم الدواء أو رقم الباركود" placeholderTextColor="#4A5D70"
         accessibilityLabel="اسم الدواء أو رقم الباركود" maxLength={120}
         returnKeyType="search" onSubmitEditing={search} editable={!busy} />
-      <View style={styles.filters}>
-        {markets.map(([code, label]) => (
-          <Pressable key={code} accessibilityRole="button" accessibilityState={{ selected: country === code }}
-            disabled={busy} onPress={() => { setCountry(code); setItems([]); setMessage(''); }}
-            style={[styles.chip, country === code && styles.selected]}>
-            <Text style={styles.meta}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
       <Pressable onPress={search} disabled={busy} accessibilityRole="button" style={styles.button}>
         <Text style={styles.buttonText}>بحث</Text>
       </Pressable>
@@ -68,7 +58,7 @@ export default function Index() {
           <Link href={{ pathname: '/product', params: { id: item.id } }} asChild>
             <Pressable style={styles.card}>
               <Text style={styles.name}>{item.brand_name_ar || item.brand_name_en}</Text>
-              <Text style={styles.meta}>{[item.strength_normalized, item.manufacturer, markets.find(([code]) => code === item.country_code)?.[1] ?? item.country_code].filter(Boolean).join(' · ')}</Text>
+              <Text style={styles.meta}>{[item.strength_normalized, item.manufacturer, markets[item.country_code] ?? item.country_code].filter(Boolean).join(' · ')}</Text>
             </Pressable>
           </Link>
         )}
@@ -85,9 +75,6 @@ const styles = StyleSheet.create({
   brand: { color: '#0F766E', fontSize: 18, fontWeight: '800', textAlign: 'right' },
   title: { color: '#0B2545', fontSize: 30, fontWeight: '800', textAlign: 'right' },
   input: { minHeight: 52, backgroundColor: '#FFF', borderColor: '#D5E6E3', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 18, textAlign: 'right', color: '#0B2545' },
-  filters: { flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap' },
-  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 22, borderColor: '#D5E6E3', borderWidth: 1, backgroundColor: '#FFF' },
-  selected: { backgroundColor: '#CCFBF1', borderColor: '#0F766E' },
   button: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: '#0F766E' },
   buttonText: { color: '#FFF', fontWeight: '700', fontSize: 18 },
   card: { borderColor: '#D5E6E3', borderWidth: 1, backgroundColor: '#FFF', borderRadius: 12, marginBottom: 8, padding: 14, gap: 6 },

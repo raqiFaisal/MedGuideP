@@ -1,0 +1,32 @@
+{
+  "mode": "pilot_publisher_split",
+  "input_size": 640,
+  "output_shape": [
+    1,
+    5,
+    8400
+  ],
+  "opset": 17,
+  "runtime_parity": true,
+  "checks": [
+    {
+      "input": "neutral",
+      "max_box_error_px": 0.0006103515625,
+      "max_score_error": 1.1920928955078125e-07,
+      "predictions_at_0_65": 0,
+      "max_score": 0.018181025981903076
+    },
+    {
+      "input": "pattern",
+      "max_box_error_px": 0.000152587890625,
+      "max_score_error": 1.4975666999816895e-06,
+      "predictions_at_0_65": 0,
+      "max_score": 0.5522581338882446
+    }
+  ],
+  "onnxruntime": "1.24.3",
+  "torch": "2.11.0+cpu",
+  "ultralytics": "8.4.220",
+  "checkpoint_sha256": "31ec84e15b7bfa2d66f827578d23b36f385d3249f0f687b232cf918bf59797e9",
+  "onnx_sha256": "99b38240738e9035f3c8d1f27b234e37808168714294cbdba27b9afd878add97"
+}

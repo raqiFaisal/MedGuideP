@@ -8,7 +8,8 @@ import { detect, fullBox, readText, visualMatches } from './models';
 
 const types: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'datamatrix', 'code128'];
 export type Stage = 'image' | 'detection' | 'barcode' | 'ocr' | 'visual' | 'matching';
-export type Analysis = Result & { notes: string[]; timeMs: number };
+type BoxGuide = { x: number; y: number; width: number; height: number };
+export type Analysis = Result & { notes: string[]; timeMs: number; packageGuide?: BoxGuide };
 
 export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: number, inputHeight: number,
   update: (stage: Stage) => void): Promise<Analysis> {
@@ -28,13 +29,33 @@ export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: 
     const bytes = await new File(prepared.uri).bytes();
     const pixels = decode(bytes, { useTArray: true, maxMemoryUsageInMB: 96, maxResolutionInMP: 6 });
     update('detection');
-    const boxes = await detect(pixels);
+    let boxes: Awaited<ReturnType<typeof detect>> = null;
+    let packageGuide: BoxGuide | undefined;
+    try {
+      boxes = await detect(pixels);
+      if (boxes === null) {
+        const pilot = await detect(pixels, true);
+        if (pilot !== null) {
+          notes.push('الإطار التجريبي يحدّد مكانًا محتملًا للعلبة فقط.');
+          if (pilot.length === 1 && pilot[0]) {
+            const { x, y, width, height } = pilot[0];
+            packageGuide = {
+              x: x / pixels.width, y: y / pixels.height,
+              width: width / pixels.width, height: height / pixels.height,
+            };
+          }
+        } else {
+          notes.push('كاشف العلبة غير مضمّن. استُخدمت الصورة كاملة.');
+        }
+      }
+    } catch {
+      notes.push('تعذّر تشغيل كاشف العلبة. استُخدمت الصورة كاملة.');
+    }
     if (boxes && boxes.length > 1) {
       return { status: 'NOT_IDENTIFIED', reason: 'MULTIPLE_PACKS', candidates: [], notes,
         barcodes: [], lines: [], timeMs: performance.now() - start };
     }
-    if (!boxes) notes.push('كاشف العلبة غير مضمّن. استُخدمت الصورة كاملة.');
-    else if (!boxes.length) notes.push('تعذّر تحديد موضع العلبة. استُخدمت الصورة كاملة.');
+    if (boxes && !boxes.length) notes.push('تعذّر تحديد موضع العلبة. استُخدمت الصورة كاملة.');
     const box = boxes?.[0] ?? fullBox(pixels);
 
     update('barcode');
@@ -83,7 +104,7 @@ export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: 
       result.status = 'NEEDS_CONFIRMATION';
       result.reason = 'REVIEW_EVIDENCE';
     }
-    return { ...result, notes, timeMs: performance.now() - start };
+    return { ...result, notes, packageGuide, timeMs: performance.now() - start };
   } finally {
     for (const path of cleanup) {
       try { new File(path).delete(); } catch { /* The OS may already have cleared the cache file. */ }
