@@ -60,3 +60,5 @@ mobile/assets/models/*.f32
 mobile/assets/models/ocr_*_alphabet.json
 
 /mobile/src/recognition/generatedAssets.js
+
+/mobile/assets/models/package_ocr_*_alphabet.json

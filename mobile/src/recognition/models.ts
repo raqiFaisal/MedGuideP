@@ -3,6 +3,7 @@ import { File } from 'expo-file-system';
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
 import { assets } from './generatedAssets';
 import type { Line } from './evidence';
+import { logicalArabic } from './readingOrder';
 import rules from '../../../shared/recognition.json';
 
 export type Pixels = { data: Uint8Array; width: number; height: number };
@@ -17,21 +18,21 @@ async function assetFile(id: number) {
   return new File(asset.localUri);
 }
 
-async function infer(id: number, data: Float32Array, height: number, width: number) {
+async function infer(id: number, data: Float32Array, height: number, width: number, channels = 3) {
   let pending = sessions.get(id);
   if (!pending) {
-    pending = assetFile(id).then(async file => InferenceSession.create(await file.bytes(), { intraOpNumThreads: 2 }));
+    pending = assetFile(id).then(file => InferenceSession.create(decodeURIComponent(file.uri.slice('file://'.length)), { intraOpNumThreads: 2 }));
     sessions.set(id, pending);
     pending.catch(() => sessions.delete(id));
   }
   const model = await pending;
-  const output = (await model.run({ [model.inputNames[0]!]: new Tensor('float32', data, [1, 3, height, width]) }))[model.outputNames[0]!];
+  const output = (await model.run({ [model.inputNames[0]!]: new Tensor('float32', data, [1, channels, height, width]) }))[model.outputNames[0]!];
   if (!output || output.type !== 'float32' || !(output.data instanceof Float32Array)) throw new Error('Unexpected model output');
   return { data: output.data, dimensions: output.dims };
 }
 
 function tensor(
-  pixels: Pixels, box: Box, width: number, height: number, transform: 'yolo' | 'dino' | 'ocr-det' | 'ocr-rec',
+  pixels: Pixels, box: Box, width: number, height: number, transform: 'yolo' | 'dino' | 'ocr-det' | 'ocr-rec' | 'ocr-db',
   canvasWidth = width, canvasHeight = height, left = 0, top = 0,
 ) {
   const plane = canvasWidth * canvasHeight;
@@ -55,7 +56,7 @@ function tensor(
         const offset = (nx - ix) * 4;
         const value = ((pixels.data[upper]! * (1 - fx) + pixels.data[upper + offset]! * fx) * (1 - fy) +
           (pixels.data[lower]! * (1 - fx) + pixels.data[lower + offset]! * fx) * fy) / 255;
-        output[c * plane + j] = transform === 'yolo' ? value : transform === 'ocr-rec' ?
+        output[c * plane + j] = transform === 'yolo' ? value : (transform === 'ocr-rec' || transform === 'ocr-db') ?
           (value - .5) / .5 : (value - means[c]!) / deviations[c]!;
       }
     }
@@ -165,9 +166,57 @@ export function decodeCtc(data: Float32Array, alphabet: string[]) {
   return { text, confidence: count ? total / count : 0 };
 }
 
+async function readPackageText(pixels: Pixels, crop: Box): Promise<Line[] | null> {
+  const models = assets.packageOcr;
+  if (!models) return null;
+  const scale = Math.min(1, 960 / Math.max(crop.width, crop.height));
+  const width = Math.max(32, Math.round(crop.width * scale / 32) * 32);
+  const height = Math.max(32, Math.round(crop.height * scale / 32) * 32);
+  const output = await infer(models.detector, tensor(pixels, crop, width, height, 'ocr-db'), height, width);
+  const [batch, channels, h, w] = output.dimensions;
+  if (batch !== 1 || channels !== 1 || !h || !w) throw new Error('Unexpected package text detection output');
+  const lines: Line[] = [];
+  for (const box of textBoxes(output.data, w, h, crop).slice(0, 12)) {
+    const margin = Math.max(2, Math.round(box.height / 6));
+    const left = Math.max(crop.x, box.x - margin);
+    const top = Math.max(crop.y, box.y - margin);
+    const right = Math.min(crop.x + crop.width, box.x + box.width + margin);
+    const bottom = Math.min(crop.y + crop.height, box.y + box.height + margin);
+    const expanded = { x: left, y: top, width: right - left, height: bottom - top };
+    const resized = Math.min(768, Math.ceil(expanded.width * 64 / expanded.height));
+    const canvas = Math.max(64, Math.ceil(resized / 4) * 4);
+    const rgb = tensor(pixels, expanded, resized, 64, 'ocr-rec');
+    const gray = new Float32Array(64 * canvas);
+    const plane = resized * 64;
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < canvas; x++) {
+        const i = y * resized + Math.min(x, resized - 1);
+        gray[y * canvas + x] = .114 * rgb[i]! + .587 * rgb[plane + i]! + .299 * rgb[2 * plane + i]!;
+      }
+    }
+    const { x, y, width: wBox, height: hBox } = box;
+    const polygon = [[x, y], [x + wBox, y], [x + wBox, y + hBox], [x, y + hBox]];
+    let best: Line | undefined;
+    for (const language of ['latin', 'arabic'] as const) {
+      const { model, alphabet } = models[language];
+      const recognition = await infer(model, gray, 64, canvas, 1);
+      if (recognition.dimensions[0] !== 1 || recognition.dimensions[2] !== alphabet.length + 1) {
+        throw new Error('Unexpected package text recognition output');
+      }
+      const decoded = decodeCtc(recognition.data, alphabet);
+      const arabicLetters = decoded.text.match(/[\u0621-\u064A]/g)?.length ?? 0;
+      if (decoded.text && (language === 'latin' || arabicLetters >= 2) && (!best || decoded.confidence > best.confidence)) {
+        best = { ...decoded, language, polygon, text: language === 'arabic' ? logicalArabic(decoded.text) : decoded.text };
+      }
+    }
+    if (best) lines.push(best);
+  }
+  return lines;
+}
+
 export async function readText(pixels: Pixels, crop: Box): Promise<Line[] | null> {
   const models = assets.ocr;
-  if (!models) return null;
+  if (!models) return readPackageText(pixels, crop);
   const scale = Math.min(1, 960 / Math.max(crop.width, crop.height));
   const width = Math.max(32, Math.round(crop.width * scale / 32) * 32);
   const height = Math.max(32, Math.round(crop.height * scale / 32) * 32);

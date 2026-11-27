@@ -3,12 +3,13 @@ import { Link } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLanguage } from '../preferences/store';
 
 import { Product, searchQuery } from '../catalog/queries';
 
-const markets: Record<string, string> = { EG: 'مصر', SA: 'السعودية' };
-
 export default function Index() {
+  const { language, direction, t } = useLanguage();
+  const markets: Record<string, string> = { EG: t('مصر', 'Egypt'), SA: t('السعودية', 'Saudi Arabia') };
   const db = useSQLiteContext();
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Product[]>([]);
@@ -20,45 +21,47 @@ export default function Index() {
     const statement = searchQuery(query, '');
     setItems([]);
     if (!statement) {
-      setMessage('اكتبي اسم الدواء أو رقم الباركود.');
+      setMessage(t('اكتبي اسم الدواء أو رقم الباركود.', 'Enter a medicine name or barcode.'));
       return;
     }
     setBusy(true);
-    setMessage('جارٍ البحث…');
+    setMessage(t('جارٍ البحث…', 'Searching…'));
     try {
       const rows = await db.getAllAsync<Product>(statement.sql, statement.parameters);
       setItems(rows.slice(0, 50));
-      setMessage(rows.length === 0 ? 'لم نجد نتائج.' : rows.length > 50 ? 'أول 50 نتيجة. حددي الاسم أو التركيز لتضييق البحث.' : `النتائج · ${rows.length}`);
+      setMessage(rows.length === 0 ? t('لم نجد نتائج.', 'No results found.') : rows.length > 50 ? t('أول 50 نتيجة. حددي الاسم أو التركيز لتضييق البحث.', 'Showing 50 results. Add the strength to narrow your search.') : t(`النتائج · ${rows.length}`, `Results · ${rows.length}`));
     } catch {
-      setMessage('تعذّر البحث في قاعدة الأدوية. أعيدي المحاولة.');
+      setMessage(t('تعذّر البحث في قاعدة الأدوية. أعيدي المحاولة.', 'Could not search the catalog. Try again.'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.screen} accessibilityLanguage="ar">
+    <SafeAreaView style={styles.screen} accessibilityLanguage={language}>
       <View style={styles.topBar}>
         <Text style={styles.brand}>MedGuide</Text>
-        <Link href="/sources" style={styles.sources}>مصادر البيانات</Link>
+        <Link href="/sources" style={styles.sources}>{t('مصادر البيانات', 'Data sources')}</Link>
+        <Link href="/settings" style={styles.sources}>{t('الإعدادات', 'Settings')}</Link>
+        <Link href="/history" style={styles.sources}>{t('السجل', 'History')}</Link>
       </View>
-      <Link href={{ pathname: "/scan", params: { mode: "camera" } }} style={styles.scan}>صوّر الدواء</Link>
-      <Link href={{ pathname: "/scan", params: { mode: "gallery" } }} style={styles.sources}>اختر صورة من المعرض</Link>
-      <Text style={styles.title} accessibilityRole="header">البحث في دليل الأدوية</Text>
-      <TextInput style={styles.input} value={query} onChangeText={setQuery}
-        placeholder="اسم الدواء أو رقم الباركود" placeholderTextColor="#4A5D70"
-        accessibilityLabel="اسم الدواء أو رقم الباركود" maxLength={120}
+      <Link href={{ pathname: "/scan", params: { mode: "camera" } }} style={styles.scan}>{t('صوّر الدواء', 'Photograph package')}</Link>
+      <Link href={{ pathname: "/scan", params: { mode: "gallery" } }} style={styles.sources}>{t('اختر صورة من المعرض', 'Choose from gallery')}</Link>
+      <Text style={[styles.title, direction]} accessibilityRole="header">{t('البحث في دليل الأدوية', 'Search medicine catalog')}</Text>
+      <TextInput style={[styles.input, direction]} value={query} onChangeText={setQuery}
+        placeholder={t('اسم الدواء أو رقم الباركود', 'Medicine name or barcode')} placeholderTextColor="#4A5D70"
+        accessibilityLabel={t('اسم الدواء أو رقم الباركود', 'Medicine name or barcode')} maxLength={120}
         returnKeyType="search" onSubmitEditing={search} editable={!busy} />
       <Pressable onPress={search} disabled={busy} accessibilityRole="button" style={styles.button}>
-        <Text style={styles.buttonText}>بحث</Text>
+        <Text style={styles.buttonText}>{t('بحث', 'Search')}</Text>
       </Pressable>
-      <Text accessibilityLiveRegion="polite" style={styles.meta}>{message}</Text>
+      <Text accessibilityLiveRegion="polite" style={[styles.meta, direction]}>{message}</Text>
       <FlatList data={items} keyExtractor={item => String(item.id)} keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <Link href={{ pathname: '/product', params: { id: item.id } }} asChild>
             <Pressable style={styles.card}>
-              <Text style={styles.name}>{item.brand_name_ar || item.brand_name_en}</Text>
-              <Text style={styles.meta}>{[item.strength_normalized, item.manufacturer, markets[item.country_code] ?? item.country_code].filter(Boolean).join(' · ')}</Text>
+              <Text style={[styles.name, direction]}>{language === 'ar' ? item.brand_name_ar || item.brand_name_en : item.brand_name_en || item.brand_name_ar}</Text>
+              <Text style={[styles.meta, direction]}>{[item.strength_normalized, item.manufacturer, markets[item.country_code] ?? item.country_code].filter(Boolean).join(' · ')}</Text>
             </Pressable>
           </Link>
         )}

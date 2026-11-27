@@ -1,0 +1,27 @@
+{
+  "detector_sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+  "architecture": "rapidocr-db-easyocr-bilingual",
+  "shape": [
+    1,
+    1,
+    64,
+    "width"
+  ],
+  "recognizers": {
+    "arabic": {
+      "onnx_sha256": "7f76fc6e92320fb278fdcda7ebe732567da88b0e06008e9931a3e7510a3cd406",
+      "alphabet_sha256": "109bdf763485c0151230e6fab211165be3cd950a588a8175b30a1f2d035a27b3",
+      "max_probability_difference": 4.0531158447265625e-06
+    },
+    "latin": {
+      "onnx_sha256": "868970495af3cbf1a70fafc45401efb006fa933058ae16e37104600f2b37d853",
+      "alphabet_sha256": "a06f5b39869a514b154509f6e37ff723c46862e435c281ae345d79b14308aebe",
+      "max_probability_difference": 1.0132789611816406e-06
+    }
+  },
+  "runtime": "1.24.3",
+  "sources": [
+    "rapidocr_onnxruntime 1.4.4",
+    "EasyOCR 1.7.2 arabic_g1 and english_g2"
+  ]
+}

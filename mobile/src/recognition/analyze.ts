@@ -5,6 +5,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { decode } from 'jpeg-js';
 import { parseBarcode, recognize, type Barcode, type Result } from './evidence';
 import { detect, fullBox, readText, visualMatches } from './models';
+import { rectifyPackage } from './perspective';
 
 const types: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'datamatrix', 'code128'];
 export type Stage = 'image' | 'detection' | 'barcode' | 'ocr' | 'visual' | 'matching';
@@ -12,18 +13,15 @@ type BoxGuide = { x: number; y: number; width: number; height: number };
 export type Analysis = Result & { notes: string[]; timeMs: number; packageGuide?: BoxGuide };
 
 export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: number, inputHeight: number,
-  update: (stage: Stage) => void): Promise<Analysis> {
+  update: (stage: Stage) => void, language: 'ar' | 'en' = 'ar'): Promise<Analysis> {
   if (!/^(file|content):\/\//.test(uri)) throw new Error('Photo must be local');
-  if (Math.min(inputWidth, inputHeight) < 32) throw new Error('Image dimensions are too small');
+  if (![inputWidth, inputHeight].every(Number.isFinite) || Math.min(inputWidth, inputHeight) < 32) throw new Error('Image dimensions are too small');
   const start = performance.now();
-  const resized = ImageManipulator.manipulate(uri);
+  const resized = ImageManipulator.manipulate(uri, { maxWidth: 1920, maxHeight: 1920 });
   const cleanup: string[] = [];
   const notes: string[] = [];
   try {
     update('image');
-    if (Math.max(inputWidth, inputHeight) > 1920) {
-      resized.resize(inputWidth > inputHeight ? { width: 1920 } : { height: 1920 });
-    }
     const prepared = await (await resized.renderAsync()).saveAsync({ format: SaveFormat.JPEG, compress: .95 });
     cleanup.push(prepared.uri);
     const bytes = await new File(prepared.uri).bytes();
@@ -36,7 +34,7 @@ export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: 
       if (boxes === null) {
         const pilot = await detect(pixels, true);
         if (pilot !== null) {
-          notes.push('الإطار التجريبي يحدّد مكانًا محتملًا للعلبة فقط.');
+          notes.push(language === 'ar' ? 'الإطار التجريبي يحدّد مكانًا محتملًا للعلبة فقط.' : 'The pilot frame marks a possible package location.');
           if (pilot.length === 1 && pilot[0]) {
             const { x, y, width, height } = pilot[0];
             packageGuide = {
@@ -45,17 +43,17 @@ export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: 
             };
           }
         } else {
-          notes.push('كاشف العلبة غير مضمّن. استُخدمت الصورة كاملة.');
+          notes.push(language === 'ar' ? 'كاشف العلبة غير مضمّن. استُخدمت الصورة كاملة.' : 'Package detector unavailable. The full image was used.');
         }
       }
     } catch {
-      notes.push('تعذّر تشغيل كاشف العلبة. استُخدمت الصورة كاملة.');
+      notes.push(language === 'ar' ? 'تعذّر تشغيل كاشف العلبة. استُخدمت الصورة كاملة.' : 'Package detection failed. The full image was used.');
     }
     if (boxes && boxes.length > 1) {
       return { status: 'NOT_IDENTIFIED', reason: 'MULTIPLE_PACKS', candidates: [], notes,
         barcodes: [], lines: [], timeMs: performance.now() - start };
     }
-    if (boxes && !boxes.length) notes.push('تعذّر تحديد موضع العلبة. استُخدمت الصورة كاملة.');
+    if (boxes && !boxes.length) notes.push(language === 'ar' ? 'تعذّر تحديد موضع العلبة. استُخدمت الصورة كاملة.' : 'No package box was found. The full image was used.');
     const box = boxes?.[0] ?? fullBox(pixels);
 
     update('barcode');
@@ -78,25 +76,35 @@ export async function analyzeImage(db: SQLiteDatabase, uri: string, inputWidth: 
         reads.push(...codes.values());
       }
     } catch {
-      notes.push('تعذّرت قراءة الباركود من الصورة.');
+      notes.push(language === 'ar' ? 'تعذّرت قراءة الباركود من الصورة.' : 'Could not read a barcode from the photo.');
     }
     update('ocr');
-    let lines;
+    let lines: Awaited<ReturnType<typeof readText>> = null;
+    try {
+      const corrected = await rectifyPackage(prepared.uri);
+      if (corrected) {
+        cleanup.push(corrected);
+        const correctedPixels = decode(await new File(corrected).bytes(), { useTArray: true, maxMemoryUsageInMB: 96, maxResolutionInMP: 6 });
+        lines = await readText(correctedPixels, fullBox(correctedPixels));
+      }
+    } catch {
+      // Continue with the unmodified image if correction is unavailable.
+    }
     let ocrFailed = false;
     try {
-      lines = await readText(pixels, box);
-      if (!lines) notes.push('نماذج قراءة النص غير مضمّنة.');
+      if (!lines?.some(line => line.confidence >= .65)) lines = await readText(pixels, box);
+      if (!lines) notes.push(language === 'ar' ? 'نماذج قراءة النص غير مضمّنة.' : 'This build has no text recognition model.');
     } catch {
       ocrFailed = true;
-      notes.push('تعذّر تشغيل قراءة النص محليًا.');
+      notes.push(language === 'ar' ? 'تعذّر تشغيل قراءة النص محليًا.' : 'Text recognition failed on the device.');
     }
     update('visual');
     let visual;
     try {
       visual = await visualMatches(pixels, box);
-      if (!visual) notes.push('فهرس الصور المرتبط بقاعدة الأدوية غير مضمّن.');
+      if (!visual) notes.push(language === 'ar' ? 'فهرس الصور المرتبط بقاعدة الأدوية غير مضمّن.' : 'This build has no catalog-linked image index.');
     } catch {
-      notes.push('تعذّر تشغيل المطابقة البصرية محليًا.');
+      notes.push(language === 'ar' ? 'تعذّر تشغيل المطابقة البصرية محليًا.' : 'Visual matching failed on the device.');
     }
     update('matching');
     const result = await recognize(db, reads, lines ?? [], visual ?? new Map());

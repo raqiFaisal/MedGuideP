@@ -5,39 +5,41 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../preferences/store';
+import { detectPreview, hasLiveGuide, type PreviewFrame } from '../recognition/liveGuide';
 import { analyzeImage, type Analysis, type Stage } from '../recognition/analyze';
 
 type Photo = { uri: string; width: number; height: number; owned: boolean };
-const stages: Record<Stage, string> = {
-  image: 'تجهيز الصورة', detection: 'تحديد موضع العلبة', barcode: 'قراءة الباركود',
-  ocr: 'قراءة النص', visual: 'البحث عن صور مشابهة', matching: 'المطابقة مع قاعدة الأدوية',
-};
-const statuses = {
-  IDENTIFIED: '✓ تم التعرف',
-  NEEDS_CONFIRMATION: '؟ نحتاج تأكيدك',
-  NOT_IDENTIFIED: '! لم نتعرف',
-};
-const reasons: Record<string, string> = {
-  MULTIPLE_PACKS: 'تظهر أكثر من علبة. التقطي صورة لعلبة واحدة.',
-  SHARED_GTIN: 'الباركود مرتبط بأكثر من سجل. قارني الاسم والتركيز والشركة على العلبة.',
-  CONFLICTING_GTIN: 'ظهرت رموز مختلفة في الصورة. صوّري علبة واحدة.',
-  CONFLICTING_TEXT: 'النص المقروء يختلف عن بيانات السجل. تحققي من التركيز والاسم.',
-  REVIEW_EVIDENCE: 'قارني الاسم والتركيز والشركة على العلبة بالسجل المقترح.',
-  NO_CATALOG_MATCH: 'جرّبي لقطة أوضح للعلبة أو استخدمي البحث اليدوي.',
-  UNIQUE_REPEATED_GTIN: 'قُرئ الباركود مرتين ووجدنا سجلًا واحدًا مرتبطًا به.',
-};
-const labels: Record<string, string> = {
-  barcode: 'الباركود', text: 'النص على العلبة', visual: 'تشابه الصورة',
-  strength: 'التركيز', manufacturer: 'الشركة', form: 'الشكل الصيدلاني',
-};
-
 function Action({ title, onPress, disabled = false }: { title: string; onPress: () => void; disabled?: boolean }) {
   return <Pressable style={[styles.action, disabled && styles.disabled]} accessibilityRole="button"
     onPress={onPress} disabled={disabled}><Text style={styles.actionText}>{title}</Text></Pressable>;
 }
 
 export default function Scan() {
+  const { language, direction, t } = useLanguage();
+  const stages: Record<Stage, string> = {
+    image: t('تجهيز الصورة', 'Preparing image'), detection: t('تحديد موضع العلبة', 'Locating package'), barcode: t('قراءة الباركود', 'Reading barcode'),
+    ocr: t('قراءة النص', 'Reading text'), visual: t('البحث عن صور مشابهة', 'Finding similar images'), matching: t('المطابقة مع قاعدة الأدوية', 'Matching the catalog'),
+  };
+  const statuses = {
+    IDENTIFIED: t('✓ تم التعرف', '✓ Identified'),
+    NEEDS_CONFIRMATION: t('؟ نحتاج تأكيدك', '? Please confirm'),
+    NOT_IDENTIFIED: t('! لم نتعرف', '! No match'),
+  };
+  const reasons: Record<string, string> = {
+    MULTIPLE_PACKS: t('تظهر أكثر من علبة. التقطي صورة لعلبة واحدة.', 'More than one package is visible. Photograph one package.'),
+    SHARED_GTIN: t('الباركود مرتبط بأكثر من سجل. قارني الاسم والتركيز والشركة على العلبة.', 'The barcode matches multiple records. Compare the name, strength and manufacturer.'),
+    CONFLICTING_GTIN: t('ظهرت رموز مختلفة في الصورة. صوّري علبة واحدة.', 'Different barcodes were found. Photograph one package.'),
+    CONFLICTING_TEXT: t('النص المقروء يختلف عن بيانات السجل. تحققي من التركيز والاسم.', 'The text conflicts with the record. Check the strength and name.'),
+    REVIEW_EVIDENCE: t('قارني الاسم والتركيز والشركة على العلبة بالسجل المقترح.', 'Compare the package name, strength and manufacturer with the suggested record.'),
+    NO_CATALOG_MATCH: t('جرّبي لقطة أوضح للعلبة أو استخدمي البحث اليدوي.', 'Try a clearer photo or search manually.'),
+    UNIQUE_REPEATED_GTIN: t('قُرئ الباركود مرتين ووجدنا سجلًا واحدًا مرتبطًا به.', 'Two barcode reads found one linked record.'),
+  };
+  const labels: Record<string, string> = {
+    barcode: t('الباركود', 'Barcode'), text: t('النص على العلبة', 'Package text'), visual: t('تشابه الصورة', 'Visual similarity'),
+    strength: t('التركيز', 'Strength'), manufacturer: t('الشركة', 'Manufacturer'), form: t('الشكل الصيدلاني', 'Dosage form'),
+  };
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const db = useSQLiteContext();
   const camera = useRef<CameraView>(null);
@@ -49,6 +51,10 @@ export default function Scan() {
   const [torch, setTorch] = useState(false);
   const [photo, setPhoto] = useState<Photo>();
   const [previewWidth, setPreviewWidth] = useState(0);
+  const [cameraWidth, setCameraWidth] = useState(0);
+  const [liveBox, setLiveBox] = useState<Awaited<ReturnType<typeof detectPreview>>>();
+  const frameBusy = useRef(false);
+  const liveActive = useRef(false);
   const [working, setWorking] = useState(false);
   const [stage, setStage] = useState<Stage>();
   const [analysis, setAnalysis] = useState<Analysis>();
@@ -79,13 +85,28 @@ export default function Scan() {
     const subscription = AppState.addEventListener('change', state => {
       setForeground(state === 'active');
       if (state === 'active') {
-        void checkPermission().catch(() => setError('تعذّر التحقق من إذن الكاميرا.'));
+        void checkPermission().catch(() => setError(t('تعذّر التحقق من إذن الكاميرا.', 'Could not check camera permission.')));
       } else {
         setReady(false);
       }
     });
     return () => subscription.remove();
-  }, [checkPermission]);
+  }, [checkPermission, t]);
+
+  const previewEnabled = Platform.OS === 'android' && hasLiveGuide && focused && foreground && cameraMode && !photo;
+  useEffect(() => {
+    liveActive.current = previewEnabled;
+    return () => { liveActive.current = false; };
+  }, [previewEnabled]);
+
+  function receivePreview({ nativeEvent }: { nativeEvent: PreviewFrame }) {
+    if (!liveActive.current || frameBusy.current) return;
+    frameBusy.current = true;
+    detectPreview(nativeEvent)
+      .then(box => { if (liveActive.current) setLiveBox(box); })
+      .catch(() => { if (liveActive.current) setLiveBox(undefined); })
+      .finally(() => { frameBusy.current = false; });
+  }
 
   function replacePhoto(next?: Photo) {
     const old = latestPhoto.current;
@@ -95,6 +116,7 @@ export default function Scan() {
     latestPhoto.current = next;
     setPhoto(next);
     setAnalysis(undefined);
+    setLiveBox(undefined);
     setStage(undefined);
     setReady(false);
   }
@@ -109,7 +131,7 @@ export default function Scan() {
         replacePhoto({ ...pick.assets[0], owned: false });
       }
     } catch {
-      if (active.current) setError('تعذّر فتح المعرض. أعيدي المحاولة.');
+      if (active.current) setError(t('تعذّر فتح المعرض. أعيدي المحاولة.', 'Could not open the gallery. Try again.'));
     } finally {
       if (active.current) setWorking(false);
     }
@@ -124,7 +146,7 @@ export default function Scan() {
       if (picture && active.current) replacePhoto({ ...picture, owned: true });
       else if (picture) new File(picture.uri).delete();
     } catch {
-      if (active.current) setError('تعذّر التقاط الصورة. أعيدي المحاولة.');
+      if (active.current) setError(t('تعذّر التقاط الصورة. أعيدي المحاولة.', 'Could not capture the photo. Try again.'));
     } finally {
       if (active.current) setWorking(false);
     }
@@ -140,7 +162,7 @@ export default function Scan() {
       if (active.current) replacePhoto({ ...rotated, owned: true });
       else new File(rotated.uri).delete();
     } catch {
-      if (active.current) setError('تعذّر تدوير الصورة.');
+      if (active.current) setError(t('تعذّر تدوير الصورة.', 'Could not rotate the photo.'));
     } finally {
       if (active.current) setWorking(false);
     }
@@ -155,10 +177,10 @@ export default function Scan() {
     try {
       const result = await analyzeImage(db, photo.uri, photo.width, photo.height, s => {
         if (active.current) setStage(s);
-      });
+      }, language);
       if (active.current) setAnalysis(result);
     } catch {
-      if (active.current) setError('تعذّر تحليل الصورة محليًا. اختاري صورة أوضح أو استخدمي البحث اليدوي.');
+      if (active.current) setError(t('تعذّر تحليل الصورة محليًا. اختاري صورة أوضح أو استخدمي البحث اليدوي.', 'Could not analyze the photo. Try a clearer photo or search manually.'));
     } finally {
       if (active.current) {
         setWorking(false);
@@ -172,27 +194,35 @@ export default function Scan() {
   const imageWidth = photo ? photo.width * scale : 0;
   const imageHeight = photo ? photo.height * scale : 0;
 
-  return <ScrollView contentContainerStyle={styles.screen} accessibilityLanguage="ar">
+  const liveScale = liveBox && cameraWidth ? Math.max(cameraWidth / liveBox.frameWidth, 330 / liveBox.frameHeight) : 0;
+  const cameraGuideProps = previewEnabled ? { packageGuideEnabled: true, onPackagePreviewFrame: receivePreview } : {};
+
+  return <ScrollView contentContainerStyle={styles.screen} accessibilityLanguage={language}>
     {!photo && cameraMode && <>
-      <Text style={styles.title}>ضعي علبة واحدة داخل الإطار</Text>
+      <Text style={[styles.title, direction]}>{t('ضعي علبة واحدة داخل الإطار', 'Place one package in the frame')}</Text>
       {permission?.granted ? <>
-        <View style={styles.camera}>
-          {focused && foreground && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" enableTorch={torch}
-            onCameraReady={() => setReady(true)} onMountError={() => setError('تعذّر فتح الكاميرا.')}/>}
-          <View pointerEvents="none" style={styles.frame}/>
+        <View style={styles.camera} onLayout={event => setCameraWidth(event.nativeEvent.layout.width)}>
+          {focused && foreground && <CameraView {...cameraGuideProps} ref={camera} style={StyleSheet.absoluteFill} facing="back" enableTorch={torch}
+            onCameraReady={() => setReady(true)} onMountError={() => setError(t('تعذّر فتح الكاميرا.', 'Could not open the camera.'))}/>}
+          {previewEnabled && ready && liveBox && liveScale > 0 ?
+            <View pointerEvents="none" style={[styles.guide, {
+              left: (cameraWidth - liveBox.frameWidth * liveScale) / 2 + liveBox.x * liveScale,
+              top: (330 - liveBox.frameHeight * liveScale) / 2 + liveBox.y * liveScale,
+              width: liveBox.width * liveScale, height: liveBox.height * liveScale,
+            }]}/> : <View pointerEvents="none" style={styles.frame}/>}
         </View>
-        <Action title={torch ? 'إطفاء الإضاءة' : 'تشغيل الإضاءة'} onPress={() => setTorch(!torch)} disabled={!ready || working}/>
-        <Action title="التقاط الصورة" onPress={capture} disabled={!ready || working}/>
-      </> : permission && <Action title={permission.canAskAgain ? 'السماح للكاميرا' : 'فتح أذونات التطبيق'}
+        <Action title={torch ? t('إطفاء الإضاءة', 'Torch off') : t('تشغيل الإضاءة', 'Torch on')} onPress={() => setTorch(!torch)} disabled={!ready || working}/>
+        <Action title={t('التقاط الصورة', 'Take photo')} onPress={capture} disabled={!ready || working}/>
+      </> : permission && <Action title={permission.canAskAgain ? t('السماح للكاميرا', 'Allow camera') : t('فتح أذونات التطبيق', 'Open app settings')}
         onPress={() => { if (permission.canAskAgain) void askPermission(); else void Linking.openSettings(); }}/>}
     </>}
-    {!photo && <Action title="اختيار صورة من المعرض" onPress={choose} disabled={working}/>}
-    {!photo && !cameraMode && <Action title="فتح الكاميرا" onPress={() => setCameraMode(true)} disabled={working}/>}
+    {!photo && <Action title={t('اختيار صورة من المعرض', 'Choose from gallery')} onPress={choose} disabled={working}/>}
+    {!photo && !cameraMode && <Action title={t('فتح الكاميرا', 'Open camera')} onPress={() => setCameraMode(true)} disabled={working}/>}
     {photo && <>
-      <Text accessibilityRole="header" style={styles.title}>{analysis ? 'نتيجة التحليل' : 'معاينة الصورة'}</Text>
+      <Text accessibilityRole="header" style={[styles.title, direction]}>{analysis ? t('نتيجة التحليل', 'Analysis result') : t('معاينة الصورة', 'Photo preview')}</Text>
       <View style={styles.preview} onLayout={event => setPreviewWidth(event.nativeEvent.layout.width)}>
         <Image source={{ uri: photo.uri }} resizeMode="contain" style={StyleSheet.absoluteFill}
-          accessibilityLabel="صورة العلبة المختارة" accessible />
+          accessibilityLabel={t('صورة العلبة المختارة', 'Selected package photo')} accessible />
         {guide && scale > 0 && <View pointerEvents="none" style={[styles.guide, {
           left: (previewWidth - imageWidth) / 2 + guide.x * imageWidth,
           top: (260 - imageHeight) / 2 + guide.y * imageHeight,
@@ -200,34 +230,40 @@ export default function Scan() {
         }]}/>}
       </View>
       {!analysis && !stage && <>
-        <Action title="حلّل الصورة" onPress={analyze} disabled={working}/>
-        <Action title="تدوير الصورة 90 درجة" onPress={rotatePhoto} disabled={working}/>
+        <Action title={t('حلّل الصورة', 'Analyze photo')} onPress={analyze} disabled={working}/>
+        <Action title={t('تدوير الصورة 90 درجة', 'Rotate photo by 90°')} onPress={rotatePhoto} disabled={working}/>
       </>}
       {stage && <View style={styles.card}><ActivityIndicator color="#0F766E"/>
-        <Text style={styles.body} accessibilityLiveRegion="polite">{stages[stage]}</Text></View>}
+        <Text style={[styles.body, direction]} accessibilityLiveRegion="polite">{stages[stage]}</Text></View>}
       {analysis && <>
         <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[styles.title,
           analysis.status === 'IDENTIFIED' ? styles.success :
             analysis.status === 'NEEDS_CONFIRMATION' ? styles.warning : styles.missing]}>
           {statuses[analysis.status]}
         </Text>
-        <Text style={styles.body}>{reasons[analysis.reason]}</Text>
+        <Text style={[styles.body, direction]}>{reasons[analysis.reason]}</Text>
         {analysis.candidates.slice(0, analysis.status === 'IDENTIFIED' ? 1 : 3).map(({ product, evidence }) => (
           <View style={styles.card} key={product.id}>
-            <Text style={styles.title}>{product.brand_name_ar || product.brand_name_en}</Text>
-            <Text style={styles.body}>{[product.strength_normalized, product.manufacturer, product.country_code].filter(Boolean).join(' · ')}</Text>
-            <Text style={styles.body}>{evidence.map(e => labels[e]).join(' · ')}</Text>
-            <Link style={styles.link} href={{ pathname: '/product', params: { id: product.id } }}>
-              {analysis.status === 'NEEDS_CONFIRMATION' ? 'هذه علبتي · فتح التفاصيل' : 'تفاصيل السجل ومصادره'}
+            <Text style={[styles.title, direction]}>{product.brand_name_ar || product.brand_name_en}</Text>
+            <Text style={[styles.body, direction]}>{[product.strength_normalized, product.manufacturer, product.country_code].filter(Boolean).join(' · ')}</Text>
+            <Text style={[styles.body, direction]}>{evidence.map(e => labels[e]).join(' · ')}</Text>
+            <Link style={[styles.link, direction]} href={{ pathname: '/product', params: { id: product.id } }}>
+              {analysis.status === 'NEEDS_CONFIRMATION' ? t('هذه علبتي · فتح التفاصيل', 'This is my package · Open details') : t('تفاصيل السجل ومصادره', 'Record details and sources')}
             </Link>
           </View>
         ))}
-        {analysis.notes.map(note => <Text key={note} style={styles.body}>{note}</Text>)}
+        {analysis.lines.length > 0 && <>
+          <Text style={[styles.body, direction]}>{t('راجع النص المقروء من الصورة', 'Review text read from the photo')}</Text>
+          {analysis.lines.filter(line => line.confidence >= .65).slice(0, 10).map((line, index) =>
+            <Text key={index} style={[styles.body, direction]} selectable
+              accessibilityLanguage={line.language === 'arabic' ? 'ar' : 'en'}>{line.text}</Text>)}
+        </>}
+        {analysis.notes.map(note => <Text key={note} style={[styles.body, direction]}>{note}</Text>)}
       </>}
-      <Action title="اختيار صورة أخرى" disabled={working} onPress={() => { setError(''); replacePhoto(); }}/>
+      <Action title={t('اختيار صورة أخرى', 'Choose another photo')} disabled={working} onPress={() => { setError(''); replacePhoto(); }}/>
     </>}
-    {error ? <Text accessibilityRole="alert" style={styles.missing}>{error}</Text> : null}
-    <Link style={styles.link} href="/">البحث اليدوي</Link>
+    {error ? <Text accessibilityRole="alert" style={[styles.missing, direction]}>{error}</Text> : null}
+    <Link style={[styles.link, direction]} href="/">{t('البحث اليدوي', 'Search manually')}</Link>
   </ScrollView>;
 }
 

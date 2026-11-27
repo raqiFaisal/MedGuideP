@@ -15,7 +15,7 @@ from medguide_engine.catalog import open_catalog
 from medguide_engine.barcode import parse_barcode
 from medguide_engine.text.strength import strengths_equivalent
 from medguide_engine.vision import Analyzer, PaddleReader, image_rgb
-from medguide_engine.visual import DIM, MODEL_ID, Dino, VisualIndex, sha256
+from medguide_engine.visual import DIM, MODEL_ID, Dino, OnnxDino, VisualIndex, sha256
 
 DATABASE = Path(__file__).resolve().parents[2] / "data/processed/build/medguide.db"
 
@@ -113,7 +113,17 @@ def verified_rows(db_path: Path, manifest: Path, images: Path, *, allow_unknown=
 def build_visual(database: Path, manifest: Path, images: Path, out: Path, embed) -> None:
     import faiss
 
-    rows = verified_rows(database, manifest, images)
+    model_sha = getattr(embed, "model_sha256", None)
+    rows = verified_rows(database, manifest, images, extra={"source_code", "source_record_id"} if model_sha else None)
+    if model_sha:
+        with open_catalog(database) as db:
+            for row in rows:
+                product = db.execute("""
+                    SELECT s.code, p.source_record_id
+                    FROM products p JOIN data_sources s ON s.id=p.source_id WHERE p.id=?
+                """, (row["product_id"],)).fetchone()
+                if tuple(product) != (row["source_code"], row["source_record_id"]):
+                    raise ValueError(f"Stale catalog mapping for {row['file_name']}")
     vectors = np.concatenate([embed(image_rgb(row["path"])) for row in rows]).astype("<f4")
     if vectors.shape != (len(rows), DIM) or not np.isfinite(vectors).all() or not np.allclose(
         np.linalg.norm(vectors, axis=1), 1, atol=1e-4
@@ -130,7 +140,7 @@ def build_visual(database: Path, manifest: Path, images: Path, out: Path, embed)
                ("file_name", "product_id", "identity_source", "sha256")} for row in rows])
     names = ("visual.faiss", "visual.f32", "visual_mapping.json")
     write_json(out / "visual_manifest.json", dict(model=MODEL_ID, catalog_sha256=sha256(database),
-               rows=len(rows), dim=DIM, files={name: sha256(out / name) for name in names}))
+               embedding_onnx_sha256=model_sha, rows=len(rows), dim=DIM, files={name: sha256(out / name) for name in names}))
 
 
 def require_independent(rows: list[dict], index: VisualIndex | None, detector_manifest: Path | None) -> None:
@@ -223,6 +233,7 @@ def main() -> None:
     parser.add_argument("--database", type=Path, default=DATABASE)
     parser.add_argument("--model-root", type=Path)
     parser.add_argument("--index", type=Path)
+    parser.add_argument("--embedding-onnx", type=Path)
     parser.add_argument("--detector", type=Path)
     parser.add_argument("--detector-manifest", type=Path)
     parser.add_argument("--ocr", action="store_true")
@@ -233,11 +244,13 @@ def main() -> None:
     if not args.manifest:
         parser.error("--manifest is required for ground-truth-backed workflows")
     if args.mode == "build-visual":
-        build_visual(args.database, args.manifest, args.images, args.output, Dino())
+        build_visual(args.database, args.manifest, args.images, args.output,
+                     OnnxDino(args.embedding_onnx) if args.embedding_onnx else Dino())
         return
     if args.mode == "retrieval" and not args.index:
         parser.error("--index is required for retrieval")
-    index = VisualIndex(args.index, Dino(), args.database) if args.index else None
+    index = VisualIndex(args.index, OnnxDino(args.embedding_onnx) if args.embedding_onnx else Dino(),
+                        args.database) if args.index else None
     if args.mode == "retrieval":
         retrieval_report(args.database, args.manifest, args.images, index, args.output)
         return

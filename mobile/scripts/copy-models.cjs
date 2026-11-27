@@ -48,6 +48,20 @@ if (ocrWeights.some(exists)) {
   }
   props.push(`ocr: { ${ocr.join(', ')} }`);
 }
+if (exists('package_ocr_export_report.json')) {
+  const report = json('package_ocr_export_report.json');
+  if (report.architecture !== 'rapidocr-db-easyocr-bilingual' || report.shape?.join(',') !== '1,1,64,width') {
+    throw new Error('Unsupported package OCR export');
+  }
+  const detector = copy('package_ocr_detector.onnx', report.detector_sha256);
+  const recognizers = ['arabic', 'latin'].map(language => {
+    const row = report.recognizers[language];
+    const model = copy(`package_ocr_${language}.onnx`, row.onnx_sha256);
+    const alphabet = copy(`package_ocr_${language}_alphabet.json`, row.alphabet_sha256);
+    return `${language}: { model: ${model}, alphabet: ${alphabet} }`;
+  });
+  props.push(`packageOcr: { detector: ${detector}, ${recognizers.join(', ')} }`);
+}
 if (exists('visual_manifest.json')) {
   const manifest = json('visual_manifest.json');
   const database = JSON.parse(fs.readFileSync(catalog, 'utf8'));
@@ -63,7 +77,11 @@ if (exists('visual_manifest.json')) {
       mapping.some(row => !Number.isSafeInteger(row.product_id) || row.product_id <= 0 || !row.identity_source)) {
     throw new Error('Invalid visual vectors or product mapping');
   }
-  const model = copy('dinov2_int8.onnx', json('dino_export_report.json').onnx_sha256);
+  const modelHash = json('dino_export_report.json').onnx_sha256;
+  if (!modelHash || manifest.embedding_onnx_sha256 !== modelHash) {
+    throw new Error('Build the visual index with the same DINOv2 ONNX weights as Android');
+  }
+  const model = copy('dinov2_int8.onnx', modelHash);
   const vectorAsset = copy('visual.f32', manifest.files['visual.f32']);
   props.push(`visual: { model: ${model}, vectors: ${vectorAsset}, ids: ${JSON.stringify(mapping.map(row => row.product_id))} }`);
 }

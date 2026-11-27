@@ -39,6 +39,28 @@ class Dino:
             return self.torch.nn.functional.normalize(features, dim=1).cpu().numpy()
 
 
+class OnnxDino:
+    """Embed with the exact ONNX graph distributed to Android."""
+
+    def __init__(self, path: Path):
+        import onnxruntime as ort
+
+        self.model_sha256 = sha256(path)
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 2
+        self.session = ort.InferenceSession(path, sess_options=options, providers=["CPUExecutionProvider"])
+        inputs = self.session.get_inputs()
+        if len(inputs) != 1 or list(inputs[0].shape) != [1, 3, SIZE, SIZE]:
+            raise ValueError("Unexpected DINOv2 ONNX input")
+        self.input_name = inputs[0].name
+
+    def __call__(self, rgb: np.ndarray) -> np.ndarray:
+        vector, = self.session.run(None, {self.input_name: preprocess(rgb)})
+        if vector.shape != (1, DIM) or not np.isfinite(vector).all() or not np.isclose(np.linalg.norm(vector), 1, atol=1e-4):
+            raise ValueError("Expected a finite normalized DINOv2 vector")
+        return vector
+
+
 class VisualIndex:
     def __init__(self, directory: Path, embed, database: Path):
         import faiss
@@ -46,6 +68,8 @@ class VisualIndex:
         manifest = json.loads((directory / "visual_manifest.json").read_text())
         if manifest["model"] != MODEL_ID or manifest["catalog_sha256"] != sha256(database):
             raise ValueError("Visual index is for a different catalog or embedding model")
+        if manifest.get("embedding_onnx_sha256") != getattr(embed, "model_sha256", None):
+            raise ValueError("Visual index was built with different embedding weights")
         mapping = directory / "visual_mapping.json"
         index = directory / "visual.faiss"
         if any(sha256(path) != manifest["files"][path.name] for path in (mapping, index)):

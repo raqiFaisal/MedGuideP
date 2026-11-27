@@ -3,6 +3,7 @@ import { detect, fullBox, readText } from '../src/recognition/models';
 import { recognize } from '../src/recognition/evidence';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+jest.mock('../src/recognition/perspective', () => ({ rectifyPackage: async () => null }));
 jest.mock('expo-camera', () => ({ Camera: { scanFromURLAsync: async () => [] } }));
 jest.mock('expo-file-system', () => ({ File: class { bytes = async () => new Uint8Array(); delete() {} } }));
 jest.mock('expo-image-manipulator', () => ({

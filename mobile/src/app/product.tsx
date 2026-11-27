@@ -3,6 +3,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { remember, useLanguage, usePreferences } from '../preferences/store';
+
 import { Product, productColumns, productTables } from '../catalog/queries';
 
 type Details = Product & {
@@ -16,17 +18,20 @@ type Details = Product & {
 };
 
 export default function ProductScreen() {
+  const { t, direction } = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   if (typeof id !== 'string' || !/^\d+$/.test(id) || !Number.isSafeInteger(Number(id))) {
-    return <Text style={styles.body}>رقم السجل غير صالح.</Text>;
+    return <Text style={[styles.body, direction]}>{t('رقم السجل غير صالح.', 'Invalid product record.')}</Text>;
   }
   return <ProductDetails key={id} id={Number(id)} />;
 }
 
 function ProductDetails({ id }: { id: number }) {
+  const { t, language, direction } = useLanguage();
+  const { update, ready, settings: { keepHistory } } = usePreferences();
   const db = useSQLiteContext();
   const [result, setResult] = useState<Details | null>(null);
-  const [status, setStatus] = useState('جارٍ تحميل السجل…');
+  const [status, setStatus] = useState(t('جارٍ تحميل السجل…', 'Loading record…'));
   const [linkError, setLinkError] = useState(false);
 
   useEffect(() => {
@@ -41,58 +46,64 @@ function ProductDetails({ id }: { id: number }) {
                 JOIN active_ingredients ai ON ai.id=pi.ingredient_id WHERE pi.product_id=p.id)) AS scientific
       ` + productTables;
     db.getFirstAsync<Details>(select + ' JOIN data_sources s ON s.id=p.source_id WHERE p.id=?', id)
-      .then((row: Details | null) => { if (active) { setResult(row); setStatus(row ? '' : 'السجل غير موجود.'); } })
-      .catch(() => { if (active) setStatus('تعذّر تحميل السجل.'); });
+      .then((row: Details | null) => { if (active) { setResult(row); setStatus(row ? '' : t('السجل غير موجود.', 'Record not found.')); } })
+      .catch(() => { if (active) setStatus(t('تعذّر تحميل السجل.', 'Could not load record.')); });
     return () => { active = false; };
-  }, [db, id]);
+  }, [db, id, t]);
 
-  if (!result) return <Text style={styles.body} accessibilityLiveRegion="polite">{status}</Text>;
+  useEffect(() => {
+    if (ready && keepHistory && result) {
+      void update(current => remember(current, { source: result.source_code, record: result.source_record_id })).catch(() => {});
+    }
+  }, [keepHistory, ready, result, update]);
 
-  const countries: Record<string, string> = { EG: 'مصر', SA: 'السعودية' };
+  if (!result) return <Text style={[styles.body, direction]} accessibilityLiveRegion="polite">{status}</Text>;
+
+  const countries: Record<string, string> = { EG: t('مصر', 'Egypt'), SA: t('السعودية', 'Saudi Arabia') };
   const country = countries[result.country_code] ?? result.country_code;
   const fields = [
-    ['الاسم التجاري بالإنجليزية', result.brand_name_ar ? result.brand_name_en : null],
-    ['التركيز المستخرج من اسم المنتج', result.strength_normalized],
-    ['الاسم العلمي أو المواد الفعالة', result.scientific],
-    ['الشركة المصنّعة', result.manufacturer],
-    ['السوق في المصدر', country],
+    [t('الاسم التجاري بالإنجليزية', 'English brand name'), result.brand_name_ar ? result.brand_name_en : null],
+    [t('التركيز المستخرج من اسم المنتج', 'Strength parsed from product name'), result.strength_normalized],
+    [t('الاسم العلمي أو المواد الفعالة', 'Scientific name or active ingredients'), result.scientific],
+    [t('الشركة المصنّعة', 'Manufacturer'), result.manufacturer],
+    [t('السوق في المصدر', 'Market in source'), country],
   ];
 
   const availabilityLabels: Record<string, string> = {
-    REGISTERED: 'مسجّل وفق المصدر',
-    MARKETED: 'مسوّق وفق المصدر',
-    IMPORTED: 'مذكور كمستورد في المصدر',
+    REGISTERED: t('مسجّل وفق المصدر', 'Registered according to source'),
+    MARKETED: t('مسوّق وفق المصدر', 'Marketed according to source'),
+    IMPORTED: t('مذكور كمستورد في المصدر', 'Listed as imported'),
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} accessibilityLanguage="ar">
-      <Text style={styles.title} accessibilityRole="header">{result.brand_name_ar || result.brand_name_en}</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} accessibilityLanguage={language}>
+      <Text style={[styles.title, direction]} accessibilityRole="header">{language === 'ar' ? result.brand_name_ar || result.brand_name_en : result.brand_name_en || result.brand_name_ar}</Text>
       {fields.filter(([, value]) => value).map(([label, value]) => (
         <View key={label} style={styles.card}>
-          <Text style={styles.label}>{label}</Text>
-          <Text style={styles.body}>{value}</Text>
+          <Text style={[styles.label, direction]}>{label}</Text>
+          <Text style={[styles.body, direction]}>{value}</Text>
         </View>
       ))}
       <View style={styles.card}>
-        <Text style={styles.label}>حالة المنتج في مصدر البيانات</Text>
-        <Text style={styles.body}>{availabilityLabels[result.availability ?? ''] ?? 'التوفر الحالي غير معلوم'}</Text>
+        <Text style={[styles.label, direction]}>{t('حالة المنتج في مصدر البيانات', 'Product status in the source')}</Text>
+        <Text style={[styles.body, direction]}>{availabilityLabels[result.availability ?? ''] ?? t('التوفر الحالي غير معلوم', 'Current availability unknown')}</Text>
         {result.source_code.startsWith('sfda-2023-') && result.registration_authority === 'SFDA' && (
-          <Text style={styles.body}>ورد ضمن قائمة الأدوية المسجلة لدى الهيئة السعودية في ديسمبر 2023.</Text>
+          <Text style={[styles.body, direction]}>{t('ورد ضمن قائمة الأدوية المسجلة لدى الهيئة السعودية في ديسمبر 2023.', 'Listed in the December 2023 Saudi Food and Drug Authority snapshot.')}</Text>
         )}
       </View>
       <View style={styles.card}>
-        <Text style={styles.label}>مصدر السجل</Text>
-        <Text style={styles.body}>{result.source_name}</Text>
-        <Text style={styles.body} selectable>{result.source_record_id}</Text>
+        <Text style={[styles.label, direction]}>{t('مصدر السجل', 'Record source')}</Text>
+        <Text style={[styles.body, direction]}>{result.source_name}</Text>
+        <Text style={[styles.body, direction]} selectable>{result.source_record_id}</Text>
         {/^https:\/\//.test(result.source_url) && (
           <Pressable accessibilityRole="link" onPress={() => {
             setLinkError(false);
             Linking.openURL(result.source_url).catch(() => setLinkError(true));
           }}>
-            <Text style={styles.link}>فتح موقع المصدر</Text>
+            <Text style={[styles.link, direction]}>{t('فتح موقع المصدر', 'Open source website')}</Text>
           </Pressable>
         )}
-        {linkError && <Text style={styles.body}>تعذّر فتح الرابط.</Text>}
+        {linkError && <Text style={[styles.body, direction]}>{t('تعذّر فتح الرابط.', 'Could not open the link.')}</Text>}
       </View>
     </ScrollView>
   );

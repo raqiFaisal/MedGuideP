@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../preferences/store';
 
 type Source = { code: string; name: string; url: string; license: string; attribution: string | null };
 
 const sourceListQuery = 'SELECT code,name,url,license,attribution FROM data_sources ORDER BY id';
 
 export default function SourcesScreen() {
+  const { language, direction, t } = useLanguage();
   const db = useSQLiteContext();
   const [sources, setSources] = useState<Source[]>([]);
-  const [status, setStatus] = useState('جارٍ تحميل المصادر…');
+  const [status, setStatus] = useState(t('جارٍ تحميل المصادر…', 'Loading sources…'));
   const [failedLink, setFailedLink] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,29 +20,29 @@ export default function SourcesScreen() {
       .then((rows: Source[]) => {
         if (!active) return;
         setSources(rows);
-        setStatus(rows.length ? '' : 'لا توجد مصادر في هذه النسخة.');
+        setStatus(rows.length ? '' : t('لا توجد مصادر في هذه النسخة.', 'This build has no data sources.'));
       })
-      .catch(() => { if (active) setStatus('تعذّر تحميل المصادر.'); });
+      .catch(() => { if (active) setStatus(t('تعذّر تحميل المصادر.', 'Could not load sources.')); });
     return () => { active = false; };
-  }, [db]);
+  }, [db, t]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} accessibilityLanguage="ar">
-      {status ? <Text style={styles.body} accessibilityLiveRegion="polite">{status}</Text> : null}
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} accessibilityLanguage={language}>
+      {status ? <Text style={[styles.body, direction]} accessibilityLiveRegion="polite">{status}</Text> : null}
       {sources.map(source => (
         <View key={source.code} style={styles.card}>
-          <Text accessibilityRole="header" style={styles.title}>{source.name}</Text>
-          <Text style={styles.body}>{source.license}</Text>
-          {source.attribution && <Text style={styles.body}>{source.attribution}</Text>}
+          <Text accessibilityRole="header" style={[styles.title, direction]}>{source.name}</Text>
+          <Text style={[styles.body, direction]}>{source.license}</Text>
+          {source.attribution && <Text style={[styles.body, direction]}>{source.attribution}</Text>}
           {/^https:\/\//i.test(source.url) && (
             <Pressable accessibilityRole="link" onPress={() => {
               setFailedLink(null);
               Linking.openURL(source.url).catch(() => setFailedLink(source.code));
             }}>
-              <Text style={styles.link}>فتح موقع المصدر</Text>
+              <Text style={[styles.link, direction]}>{t('فتح موقع المصدر', 'Open source website')}</Text>
             </Pressable>
           )}
-          {failedLink === source.code && <Text style={styles.body}>تعذّر فتح الرابط.</Text>}
+          {failedLink === source.code && <Text style={[styles.body, direction]}>{t('تعذّر فتح الرابط.', 'Could not open the link.')}</Text>}
         </View>
       ))}
     </ScrollView>
