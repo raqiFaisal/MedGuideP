@@ -1,6 +1,10 @@
-# Data and model weights never go to Git (see CLAUDE.md §13)
+# Raw data and local training weights stay outside Git. Distributed app assets are listed below.
 data/raw/
-data/processed/
+data/processed/*
+!data/processed/build/
+data/processed/build/*
+!data/processed/build/manifest.json
+!data/processed/build/quality_report.md
 data/reference/
 *.pt
 *.pth
@@ -8,6 +12,10 @@ data/reference/
 *.tflite
 *.safetensors
 *.db
+!data/processed/build/medguide.db
+!models/mobile/package_ocr_detector.onnx
+!models/mobile/package_ocr_latin.onnx
+!models/mobile/yolo11n_medguide_pilot.onnx
 *.db-journal
 !mobile/assets/db/.gitkeep
 mobile/assets/db/version.json

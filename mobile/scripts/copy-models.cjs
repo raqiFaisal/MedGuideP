@@ -12,9 +12,34 @@ const exists = name => fs.existsSync(path.join(input, name));
 const props = [];
 
 function copy(name, checksum) {
-  const bytes = fs.readFileSync(path.join(input, name));
-  if (!checksum || sha(bytes) !== checksum) throw new Error(`Integrity check failed for ${name}`);
-  fs.writeFileSync(path.join(assets, name), bytes);
+  const source = path.join(input, name);
+  const destination = path.join(assets, name);
+  const partsDirectory = source + '.parts';
+  const temporary = destination + '.' + process.pid + '.tmp';
+  const files = fs.existsSync(partsDirectory)
+    ? fs.readdirSync(partsDirectory).filter(part => /^part-[0-9]{2}$/.test(part)).sort()
+    : null;
+  if (files && (!files.length || files.some((part, i) => part !== 'part-' + String(i).padStart(2, '0')))) {
+    throw new Error(`Missing or unordered model parts for ${name}`);
+  }
+  const paths = files ? files.map(part => path.join(partsDirectory, part)) : [source];
+  const hash = crypto.createHash('sha256');
+  try {
+    const output = fs.openSync(temporary, 'wx');
+    try {
+      for (const file of paths) {
+        const bytes = fs.readFileSync(file);
+        hash.update(bytes);
+        fs.writeFileSync(output, bytes);
+      }
+    } finally {
+      fs.closeSync(output);
+    }
+    if (!checksum || hash.digest('hex') !== checksum) throw new Error(`Integrity check failed for ${name}`);
+    fs.renameSync(temporary, destination);
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
   return `require('../../assets/models/${name}')`;
 }
 

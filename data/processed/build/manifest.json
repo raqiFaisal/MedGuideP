@@ -1,0 +1,15 @@
+{
+  "db_version": "0.2.0",
+  "schema_version": 1,
+  "built_at": "2026-11-26T22:52:46+00:00",
+  "file": "medguide.db",
+  "size_bytes": 67809280,
+  "sha256": "05352a9730352b080d9b7f65ca31e436fc944f66e45c3b5110c78a5b2eb0e30f",
+  "download_url": null,
+  "sources": [
+    "eg-drugs",
+    "rxnorm",
+    "sfda-2023-local",
+    "sfda-2023-nonlocal"
+  ]
+}
