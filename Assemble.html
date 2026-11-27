@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MedGuideP APK</title>
+<main dir="rtl">
+<h1>تجميع MedGuideP.apk</h1>
+<p>اختر ملفات <bdi>MedGuideP.apk.part-00</bdi> إلى <bdi>MedGuideP.apk.part-07</bdi> معًا.</p>
+<input id="parts" type="file" multiple aria-label="أجزاء ملف APK">
+<button id="save">تنزيل APK</button>
+<p id="status" role="status"></p>
+</main>
+<script>
+const parts = document.querySelector('#parts');
+const status = document.querySelector('#status');
+let url;
+document.querySelector('#save').addEventListener('click', () => {
+  const files = [...parts.files].sort((a, b) => a.name.localeCompare(b.name));
+  if (files.length !== 8 || files.some((file, i) =>
+    file.name !== 'MedGuideP.apk.part-0' + i || file.size !== (i === 7 ? 26023828 : 45000000))) {
+    status.textContent = 'اختر الأجزاء الثمانية الأصلية بعد فك الضغط.';
+    return;
+  }
+  if (url) URL.revokeObjectURL(url);
+  url = URL.createObjectURL(new Blob(files, {type: 'application/vnd.android.package-archive'}));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'MedGuideP.apk';
+  link.click();
+  status.textContent = 'بدأ تنزيل MedGuideP.apk.';
+});
+</script>
